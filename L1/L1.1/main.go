@@ -1,4 +1,4 @@
-package l11
+package main
 
 import "fmt"
 
