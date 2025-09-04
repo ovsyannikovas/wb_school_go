@@ -40,6 +40,7 @@ func main() {
 
 	wg := sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Главная пишущая горутина
 	go func(ctx context.Context) {
