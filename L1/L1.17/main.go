@@ -1,0 +1,60 @@
+package main
+
+import "fmt"
+
+func quickSort(array []int) []int {
+	if len(array) <= 1 {
+		return array
+	}
+
+	middle := array[len(array)/2]
+	left := make([]int, 0, len(array))
+	right := make([]int, 0, len(array))
+	equal := make([]int, 0, len(array))
+
+	for _, num := range array {
+		if num < middle {
+			left = append(left, num)
+		} else if num > middle {
+			right = append(right, num)
+		} else {
+			equal = append(equal, num)
+		}
+	}
+
+	left = quickSort(left)
+	right = quickSort(right)
+
+	result := append(left, equal...)
+	result = append(result, right...)
+
+	return result
+}
+
+func binSearch(sortedArray []int, element int) int {
+	left, right := 0, len(sortedArray)-1
+
+	for left <= right {
+		middle := (left + right) / 2
+
+		if sortedArray[middle] < element {
+			left = middle + 1
+		} else if sortedArray[middle] > element {
+			right = middle - 1
+		} else {
+			return middle
+		}
+	}
+
+	return -1
+}
+
+func main() {
+	array := []int{3, 8, 2, 4, 4, 1, 10}
+	fmt.Printf("Initial array: %v\n", array)
+	sortedArray := quickSort(array)
+	fmt.Printf("Sorted array: %v\n", sortedArray)
+	num := 3
+	index := binSearch(sortedArray, num)
+	fmt.Printf("Index of element %d is: %d\n", num, index)
+}
