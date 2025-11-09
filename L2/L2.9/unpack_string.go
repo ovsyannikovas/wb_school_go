@@ -10,8 +10,9 @@ import (
 func UnpackString(str string) (string, error) {
 	var result []rune
 	runes := []rune(str)
+
 	for i := 0; i < len(runes); i++ {
-		s := rune(runes[i])
+		s := runes[i]
 
 		if s == '\\' {
 			if i+1 >= len(runes) {
