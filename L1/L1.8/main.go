@@ -34,7 +34,7 @@ func main() {
 		fmt.Println("Invalid number")
 		return
 	}
-	bit -= 1
+	bit--
 	bin, err := strconv.Atoi(os.Args[3])
 	if err != nil || (bin != 0 && bin != 1) {
 		fmt.Println("Invalid number")
