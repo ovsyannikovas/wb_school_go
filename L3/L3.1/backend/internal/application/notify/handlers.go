@@ -1,21 +1,18 @@
 package notify
 
 import (
-	"github.com/ovsyannikvas/wb_school/L3/L3.1/internal/infrastructure/redis"
-	"github.com/ovsyannikvas/wb_school/L3/L3.1/internal/service"
+	"wb_school/L3/L3.1/backend/internal/infrastructure/rabbitmq"
+	"wb_school/L3/L3.1/backend/internal/infrastructure/redis"
 )
 
-type OrderHandlers struct {
-	ordersRepo  service.OrderRepository
-	redisClient *redis.Client
+type NotifyHandlers struct {
+	cache *redis.Client
+	queue *rabbitmq.Queue
 }
 
-func SetupHandlers(
-	or service.OrderRepository,
-	rc *redis.Client,
-) OrderHandlers {
-	return OrderHandlers{
-		ordersRepo:  or,
-		redisClient: rc,
+func SetupHandlers(cache *redis.Client, queue *rabbitmq.Queue) *NotifyHandlers {
+	return &NotifyHandlers{
+		cache: cache,
+		queue: queue,
 	}
 }
