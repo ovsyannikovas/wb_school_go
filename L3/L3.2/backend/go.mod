@@ -1,4 +1,4 @@
-module wb_school
+module wb_school/L3/L3.2/backend
 
 go 1.25.0
 
@@ -8,9 +8,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
-	github.com/lib/pq v1.11.2
-	//github.com/streadway/amqp v1.1.0
-	golang.org/x/net v0.51.0
+	github.com/lib/pq v1.12.0
 )
 
 require (
