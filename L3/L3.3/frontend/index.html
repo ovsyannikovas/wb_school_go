@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comment Tree - Древовидные комментарии</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .search-section {
+            padding: 20px 30px;
+            background: #f7f7f7;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .comments-section {
+            padding: 30px;
+        }
+
+        .comment {
+            margin-bottom: 20px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .comment-card {
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .comment-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .comment-author {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .comment-date {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .comment-content {
+            margin-bottom: 10px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .comment-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
+        .btn-reply {
+            background: #667eea;
+            color: white;
+        }
+
+        .reply-form {
+            margin-top: 15px;
+            margin-left: 30px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .reply-form.active {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .reply-input, .author-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .comment-children {
+            margin-left: 30px;
+            margin-top: 15px;
+            border-left: 2px dashed #e0e0e0;
+            padding-left: 20px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+        }
+
+        .new-comment-form {
+            background: #f7f7f7;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+
+        .new-comment-form h3 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .comment-children {
+                margin-left: 15px;
+                padding-left: 10px;
+            }
+
+            .reply-form {
+                margin-left: 15px;
+            }
+
+            .comment-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>💬 Comment Tree</h1>
+        <p>Древовидные комментарии с поиском и навигацией</p>
+    </div>
+
+    <div class="search-section">
+        <div class="search-box">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Поиск комментариев...">
+            <button id="searchBtn" class="btn btn-primary">Найти</button>
+            <button id="resetSearchBtn" class="btn">Сбросить</button>
+        </div>
+    </div>
+
+    <div class="comments-section">
+        <div id="commentsContainer">
+            <div class="loading">Загрузка комментариев...</div>
+        </div>
+
+        <div class="new-comment-form">
+            <h3>➕ Новый комментарий</h3>
+            <input type="text" id="newAuthor" class="author-input" placeholder="Ваше имя *">
+            <textarea id="newContent" class="reply-input" rows="3" placeholder="Текст комментария *"></textarea>
+            <button id="submitNewComment" class="btn btn-primary">Отправить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = 'http://localhost:8080/api';
+    let currentParentId = null;
+
+    // Загрузка комментариев
+    async function loadComments(parentId = null) {
+        try {
+            const url = parentId
+                ? `${API_BASE}/comments?parent_id=${parentId}`
+                : `${API_BASE}/comments`;
+            const response = await fetch(url);
+            const data = await response.json();
+            renderComments(data.data);
+        } catch (error) {
+            console.error('Error loading comments:', error);
+            document.getElementById('commentsContainer').innerHTML =
+                '<div class="empty-state">❌ Ошибка загрузки комментариев</div>';
+        }
+    }
+
+    // Поиск комментариев
+    async function searchComments() {
+        const query = document.getElementById('searchInput').value.trim();
+        if (!query) {
+            loadComments();
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/comments/search?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            renderSearchResults(data.data);
+        } catch (error) {
+            console.error('Error searching:', error);
+        }
+    }
+
+    // Создание комментария
+    async function createComment(content, author, parentId = null) {
+        try {
+            const response = await fetch(`${API_BASE}/comments`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: content,
+                    author: author,
+                    parent_id: parentId
+                })
+            });
+
+            if (response.ok) {
+                loadComments();
+                return true;
+            } else {
+                const error = await response.json();
+                alert('Ошибка: ' + error.error);
+                return false;
+            }
+        } catch (error) {
+            console.error('Error creating comment:', error);
+            alert('Ошибка при создании комментария');
+            return false;
+        }
+    }
+
+    // Удаление комментария
+    async function deleteComment(id) {
+        if (!confirm('Удалить этот комментарий и все ответы на него?')) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/comments/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                loadComments();
+            } else {
+                alert('Ошибка при удалении');
+            }
+        } catch (error) {
+            console.error('Error deleting comment:', error);
+            alert('Ошибка при удалении');
+        }
+    }
+
+    // Рендер дерева комментариев
+    function renderComments(comments, level = 0) {
+        const container = document.getElementById('commentsContainer');
+
+        if (!comments || comments.length === 0) {
+            container.innerHTML = '<div class="empty-state">💭 Нет комментариев. Будьте первым!</div>';
+            return;
+        }
+
+        container.innerHTML = comments.map(comment => renderCommentTree(comment)).join('');
+    }
+
+    function renderCommentTree(comment) {
+        return `
+                <div class="comment" data-id="${comment.id}">
+                    <div class="comment-card">
+                        <div class="comment-header">
+                            <span class="comment-author">👤 ${escapeHtml(comment.author)}</span>
+                            <span class="comment-date">📅 ${new Date(comment.created_at).toLocaleString()}</span>
+                        </div>
+                        <div class="comment-content">${escapeHtml(comment.content)}</div>
+                        <div class="comment-actions">
+                            <button class="btn btn-sm btn-reply" onclick="showReplyForm('${comment.id}')">💬 Ответить</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteComment('${comment.id}')">🗑️ Удалить</button>
+                        </div>
+                    </div>
+                    <div id="reply-form-${comment.id}" class="reply-form">
+                        <input type="text" id="reply-author-${comment.id}" class="author-input" placeholder="Ваше имя *">
+                        <textarea id="reply-content-${comment.id}" class="reply-input" rows="2" placeholder="Текст ответа *"></textarea>
+                        <button class="btn btn-primary btn-sm" onclick="submitReply('${comment.id}')">Отправить ответ</button>
+                        <button class="btn btn-sm" onclick="hideReplyForm('${comment.id}')">Отмена</button>
+                    </div>
+                    ${comment.children && comment.children.length > 0
+            ? `<div class="comment-children">${comment.children.map(child => renderCommentTree(child)).join('')}</div>`
+            : ''}
+                </div>
+            `;
+    }
+
+    function renderSearchResults(comments) {
+        const container = document.getElementById('commentsContainer');
+
+        if (!comments || comments.length === 0) {
+            container.innerHTML = '<div class="empty-state">🔍 Ничего не найдено</div>';
+            return;
+        }
+
+        container.innerHTML = `
+                <div style="margin-bottom: 20px; padding: 10px; background: #e8f0fe; border-radius: 8px;">
+                    📊 Найдено комментариев: ${comments.length}
+                </div>
+                ${comments.map(comment => `
+                    <div class="comment-card" style="margin-bottom: 15px;">
+                        <div class="comment-header">
+                            <span class="comment-author">👤 ${escapeHtml(comment.author)}</span>
+                            <span class="comment-date">📅 ${new Date(comment.created_at).toLocaleString()}</span>
+                        </div>
+                        <div class="comment-content">${escapeHtml(comment.content)}</div>
+                    </div>
+                `).join('')}
+                <button class="btn" onclick="loadComments()">← Назад ко всем комментариям</button>
+            `;
+    }
+
+    function showReplyForm(commentId) {
+        const form = document.getElementById(`reply-form-${commentId}`);
+        form.classList.add('active');
+    }
+
+    function hideReplyForm(commentId) {
+        const form = document.getElementById(`reply-form-${commentId}`);
+        form.classList.remove('active');
+    }
+
+    async function submitReply(parentId) {
+        const author = document.getElementById(`reply-author-${parentId}`).value.trim();
+        const content = document.getElementById(`reply-content-${parentId}`).value.trim();
+
+        if (!author || !content) {
+            alert('Пожалуйста, заполните имя и текст ответа');
+            return;
+        }
+
+        const success = await createComment(content, author, parentId);
+        if (success) {
+            hideReplyForm(parentId);
+            document.getElementById(`reply-author-${parentId}`).value = '';
+            document.getElementById(`reply-content-${parentId}`).value = '';
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Event listeners
+    document.getElementById('searchBtn').addEventListener('click', searchComments);
+    document.getElementById('resetSearchBtn').addEventListener('click', () => {
+        document.getElementById('searchInput').value = '';
+        loadComments();
+    });
+    document.getElementById('submitNewComment').addEventListener('click', async () => {
+        const author = document.getElementById('newAuthor').value.trim();
+        const content = document.getElementById('newContent').value.trim();
+
+        if (!author || !content) {
+            alert('Пожалуйста, заполните имя и текст комментария');
+            return;
+        }
+
+        const success = await createComment(content, author);
+        if (success) {
+            document.getElementById('newAuthor').value = '';
+            document.getElementById('newContent').value = '';
+        }
+    });
+
+    // Инициализация
+    loadComments();
+</script>
+</body>
+</html>

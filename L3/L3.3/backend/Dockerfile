@@ -14,8 +14,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o comment ./cmd/main.go
 
 FROM alpine:latest
 
-COPY --from=builder /app/shortener /usr/local/bin/shortener
+COPY --from=builder /app/comment /usr/local/bin/comment
 
 EXPOSE 8080
 
-CMD ["shortener"]
+CMD ["comment"]

@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -10,28 +12,14 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/internal/migrations:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - shortener-network
-
-  redis:
-    image: redis:7-alpine
-    container_name: comment-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - shortener-network
+      - comment-network
 
   app:
     build: .
@@ -41,24 +29,16 @@ services:
     environment:
       - SERVER_PORT=8080
       - POSTGRES_URL=postgres://postgres:postgres@postgres:5432/comment?sslmode=disable
-      - REDIS_ADDR=redis:6379
-      - REDIS_PASSWORD=
-      - REDIS_DB=0
-      - BASE_URL=http://localhost:8080
-      - SHORT_LENGTH=6
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
-      - shortener-network
+      - comment-network
     restart: unless-stopped
 
 volumes:
   postgres_data:
-  redis_data:
 
 networks:
-  shortener-network:
+  comment-network:
     driver: bridge
