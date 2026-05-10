@@ -31,7 +31,6 @@ func TestOr_Empty(t *testing.T) {
 
 	select {
 	case <-result:
-		// ОК - канал закрыт
 	case <-time.After(10 * time.Millisecond):
 		t.Error("Канал не закрылся")
 	}
@@ -77,7 +76,7 @@ func TestOr_ValueNotClose(t *testing.T) {
 
 	go func() {
 		time.Sleep(50 * time.Millisecond)
-		ch <- "hello" // отправляем значение, НЕ закрываем
+		ch <- "hello"
 	}()
 
 	start := time.Now()
