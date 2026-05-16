@@ -1,0 +1,55 @@
+services:
+  distributor:
+    build: .
+    container_name: grep-distributor
+    # Не запускаем ничего, просто держим контейнер живым для сети
+    command: tail -f /dev/null
+    networks:
+      - grepnet
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./testdata:/data:ro
+
+  worker1:
+    build: .
+    container_name: grep-worker1
+    command: ./worker -id worker1 -distributorAddr distributor:9090 -port 8081 -c 4
+    networks:
+      - grepnet
+    depends_on:
+      - distributor
+    volumes:
+      - ./testdata:/data:ro
+    ports:
+      - "8081:8081"
+
+  worker2:
+    build: .
+    container_name: grep-worker2
+    command: ./worker -id worker2 -distributorAddr distributor:9090 -port 8082 -c 4
+    networks:
+      - grepnet
+    depends_on:
+      - distributor
+    volumes:
+      - ./testdata:/data:ro
+    ports:
+      - "8082:8082"
+
+  worker3:
+    build: .
+    container_name: grep-worker3
+    command: ./worker -id worker3 -distributorAddr distributor:9090 -port 8083 -c 4
+    networks:
+      - grepnet
+    depends_on:
+      - distributor
+    volumes:
+      - ./testdata:/data:ro
+    ports:
+      - "8083:8083"
+
+networks:
+  grepnet:
+    driver: bridge
