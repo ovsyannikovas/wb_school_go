@@ -1,0 +1,12 @@
+BenchmarkAddWithMap-12          	 4211959	       289.2 ns/op	     161 B/op	      14 allocs/op
+BenchmarkFactorialNaive10-12    	14932166	        80.0 ns/op	     344 B/op	       3 allocs/op
+BenchmarkFactorialNaive15-12    	13637576	        90.0 ns/op	     352 B/op	       3 allocs/op
+BenchmarkFibonacciNaive20-12    	   77662	     15202 ns/op	     340 B/op	       3 allocs/op
+BenchmarkFibonacciNaive25-12    	    7204	    169116 ns/op	     341 B/op	       3 allocs/op
+BenchmarkMultiplyString-12      	23233375	        52.1 ns/op	      32 B/op	       3 allocs/op
+BenchmarkSumFirstN-12           	  132788	      8886 ns/op	   82280 B/op	       6 allocs/op
+BenchmarkAdd-12                 	 1386229	       862.2 ns/op	    1602 B/op	      29 allocs/op
+BenchmarkMultiply-12            	 1874798	       618.7 ns/op	    1447 B/op	      18 allocs/op
+BenchmarkFibonacci20-12         	   76190	     15545 ns/op	    1003 B/op	      13 allocs/op
+BenchmarkFactorial10-12         	 2701162	       444.3 ns/op	    1051 B/op	      13 allocs/op
+BenchmarkBulkAdd10-12           	 3115232	       379.9 ns/op	    1406 B/op	      10 allocs/op

@@ -1,0 +1,13 @@
+BenchmarkAddInt-12                  	28206397	        44.9 ns/op	      16 B/op	       3 allocs/op
+BenchmarkFactorialIterative10-12    	68265858	        17.5 ns/op	       8 B/op	       1 allocs/op
+BenchmarkFactorialIterative15-12    	52995925	        21.8 ns/op	      16 B/op	       1 allocs/op
+BenchmarkFibonacciFast20-12         	95298601	        12.9 ns/op	       4 B/op	       1 allocs/op
+BenchmarkFibonacciFast25-12         	85251745	        13.4 ns/op	       5 B/op	       1 allocs/op
+BenchmarkFibonacciFast98-12         	76313629	        15.1 ns/op	      16 B/op	       1 allocs/op
+BenchmarkMultiplyInt-12             	24608065	        48.5 ns/op	      21 B/op	       3 allocs/op
+BenchmarkSumFirstNOptimized-12      	48611449	        24.6 ns/op	      16 B/op	       2 allocs/op
+BenchmarkAdd-12                 	 2655229	       459.5 ns/op	    1029 B/op	      13 allocs/op
+BenchmarkMultiply-12            	 2487921	       465.6 ns/op	    1041 B/op	      13 allocs/op
+BenchmarkFibonacci20-12         	   2871171	       421.3 ns/op	    1009 B/op	      12 allocs/op
+BenchmarkFactorial10-12         	   2828535	       429.2 ns/op	    1014 B/op	      12 allocs/op
+BenchmarkBulkAdd10-12           	   3264511	       358.2 ns/op	    1370 B/op	       9 allocs/op
