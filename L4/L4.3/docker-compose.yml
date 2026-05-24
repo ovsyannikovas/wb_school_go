@@ -1,0 +1,12 @@
+services:
+  calendar:
+    build: .
+    container_name: calendar-service
+    ports:
+      - "8080:8080"
+    networks:
+      - calendarnet
+
+networks:
+  calendarnet:
+    driver: bridge
