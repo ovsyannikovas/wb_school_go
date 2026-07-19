@@ -5,50 +5,70 @@ import (
 	"sync"
 )
 
+type Worker interface {
+	Work()
+}
+
 type Barrier interface {
 	Await() error
 	Reset()
 }
 
+// Нужно реализовать циклический барьер, который позволяет N горутинам ждать друг друга
+// Когда все N горутин вызвали метод Await(), они одновременно освобождаются,
+// и барьер сбрасывается (становится готовым к следующему использованию)
 type CyclicBarrier struct {
-	mu      sync.Mutex
-	count   int
-	parties int
-	ch      chan struct{}
+	mu       sync.Mutex
+	cond     *sync.Cond
+	parties  int
+	count    int
+	gen      int // поколение успешного сбора
+	resetGen int // поколение сброса
 }
 
 func NewCyclicBarrier(parties int) *CyclicBarrier {
-	return &CyclicBarrier{
-		parties: parties,
-		ch:      make(chan struct{}),
-	}
+	b := &CyclicBarrier{parties: parties}
+	b.cond = sync.NewCond(&b.mu)
+	return b
 }
 
+// Await блокирует горутину до тех пор, пока все parties не вызовут Await
+// Когда все собрались, барьер сбрасывается и все ожидающие возвращаются
+// Возвращает nil при успешной синхронизации, иначе ошибку (например, если барьер сброшен через Reset)
 func (b *CyclicBarrier) Await() error {
 	b.mu.Lock()
-	b.count++
+	defer b.mu.Unlock()
 
+	myGen := b.gen
+	myResetGen := b.resetGen
+
+	b.count++
 	if b.count == b.parties {
-		b.resetNoLock()
-		b.mu.Unlock()
+		b.count = 0
+		b.gen++
+		b.cond.Broadcast()
 		return nil
 	}
-	b.mu.Unlock()
 
-	<-b.ch
+	for b.gen == myGen && b.resetGen == myResetGen {
+		b.cond.Wait()
+	}
+
+	if b.resetGen != myResetGen {
+		return fmt.Errorf("barrier reset")
+	}
 	return nil
 }
 
+// Reset принудительно сбрасывает барьер, пробуждая все ожидающие горутины с ошибкой
+// После сброса барьер готов к новому использованию
 func (b *CyclicBarrier) Reset() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.resetNoLock()
-}
 
-func (b *CyclicBarrier) resetNoLock() {
 	b.count = 0
-	close(b.ch)
-	b.ch = make(chan struct{})
+	b.resetGen++
+	b.cond.Broadcast()
 }
 
 // usage
