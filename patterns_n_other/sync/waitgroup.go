@@ -1,12 +1,14 @@
 package sync
 
 import (
+	"sync"
 	"sync/atomic"
 )
 
 type WaitGroup struct {
 	counter atomic.Int64
 	done    chan struct{}
+	mu      sync.Mutex
 }
 
 func NewWaitGroup() *WaitGroup {
@@ -21,8 +23,13 @@ func (wg *WaitGroup) Add(delta int) {
 		panic("negative WaitGroup counter")
 	}
 	if val == 0 {
-		close(wg.done)
-		wg.done = make(chan struct{})
+		wg.mu.Lock()
+		select {
+		case <-wg.done:
+		default:
+			close(wg.done)
+		}
+		wg.mu.Unlock()
 	}
 }
 
