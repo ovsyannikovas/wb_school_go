@@ -4,16 +4,12 @@ import "context"
 
 type Future[T any] struct {
 	ctx      context.Context
-	cancel   context.CancelFunc
 	resultCh chan T
 }
 
 func NewFuture[T any](ctx context.Context, action func(ctx context.Context) T) *Future[T] {
-	ctx, cancel := context.WithCancel(ctx)
-
 	future := &Future[T]{
 		ctx:      ctx,
-		cancel:   cancel,
 		resultCh: make(chan T, 1),
 	}
 
