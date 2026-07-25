@@ -14,20 +14,14 @@ func NewFuture[T any](ctx context.Context, action func(ctx context.Context) T) *
 	}
 
 	go func() {
-		defer func() {
-			close(future.resultCh)
-		}()
+		defer close(future.resultCh)
 
-		done := make(chan T, 1)
-		go func() {
-			done <- action(ctx)
-		}()
+		res := action(ctx)
 
 		select {
 		case <-ctx.Done():
 			return
-		case result := <-done:
-			future.resultCh <- result
+		case future.resultCh <- res:
 		}
 	}()
 
@@ -39,7 +33,7 @@ func (f *Future[T]) Get() (T, error) {
 	case <-f.ctx.Done():
 		var zero T
 		return zero, f.ctx.Err()
-	case result := <-f.resultCh:
-		return result, nil
+	case res := <-f.resultCh:
+		return res, nil
 	}
 }
