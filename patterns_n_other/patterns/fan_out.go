@@ -3,6 +3,7 @@ package main
 import "context"
 
 // Подсказка:
+// generic
 // outputs, result, одна горутина на все проходы
 
 func FanOut[T any](ctx context.Context, in <-chan T, numOut int) []<-chan T {

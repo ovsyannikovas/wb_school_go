@@ -7,6 +7,7 @@ import (
 )
 
 // Подсказка:
+// generics
 // как fanin, но применяем transform
 
 func Transformer[T any, R any](

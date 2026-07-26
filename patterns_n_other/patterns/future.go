@@ -3,7 +3,7 @@ package main
 import "context"
 
 // Подсказка:
-// ctx, resultCh
+// generic, ctx, resultCh
 // Get()
 // все самое важное в создании, буферизированный канал, одна горутина
 

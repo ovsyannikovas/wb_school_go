@@ -6,6 +6,7 @@ import (
 )
 
 // Подсказка:
+// generic
 // out, wg, проходимся по каналам, по каждому горутиним с селектом + горутина закрыватор
 
 func FanIn[T any](ctx context.Context, chans ...<-chan T) <-chan T {
