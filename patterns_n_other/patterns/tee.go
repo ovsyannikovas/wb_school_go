@@ -1,7 +1,9 @@
 package main
 
+// Подсказка:
 // Tee разветвляет входной канал на n выходных каналов
-// Каждое значение из inputCh отправляется во все выходные каналы
+// outputChs, одна горутина, конвертация в <-
+
 func Tee[T any](inputCh <-chan T, n int) []<-chan T {
 	outputChs := make([]chan T, n)
 	for i := 0; i < n; i++ {

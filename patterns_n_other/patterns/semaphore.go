@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+// Подсказка:
+// Acquire, Release
+// tokens, select, <-
+
 type Semaphore struct {
 	tokens chan struct{}
 }

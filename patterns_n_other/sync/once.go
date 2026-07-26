@@ -5,6 +5,9 @@ import (
 	"sync/atomic"
 )
 
+// Подсказка:
+// 2 поля, Do(), одно атомик!
+
 type Once struct {
 	done atomic.Bool
 	mu   sync.Mutex

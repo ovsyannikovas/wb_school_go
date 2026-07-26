@@ -1,20 +1,20 @@
 package sync
 
-import (
-	"runtime"
-	"sync/atomic"
-)
+// Подсказка:
+// 1 поле, буфер 1
 
-type Mutex struct {
-	state atomic.Bool
+type ChannelMutex struct {
+	ch chan struct{}
 }
 
-func (m *Mutex) Lock() {
-	for !m.state.CompareAndSwap(false, true) {
-		runtime.Gosched()
-	}
+func NewChannelMutex() *ChannelMutex {
+	return &ChannelMutex{ch: make(chan struct{}, 1)}
 }
 
-func (m *Mutex) Unlock() {
-	m.state.Store(false)
+func (m *ChannelMutex) Lock() {
+	m.ch <- struct{}{} // блокируется, если канал занят
+}
+
+func (m *ChannelMutex) Unlock() {
+	<-m.ch
 }

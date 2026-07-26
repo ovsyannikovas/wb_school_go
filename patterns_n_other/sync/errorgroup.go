@@ -5,7 +5,8 @@ import (
 	"sync"
 )
 
-type Token struct{}
+// Подсказка:
+// 4 поля, Go(), Wait(), с once пишем ошибку и cancel, Wait простой
 
 type ErrGroup struct {
 	cancel context.CancelFunc

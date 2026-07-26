@@ -2,6 +2,11 @@ package main
 
 import "context"
 
+// Подсказка:
+// ctx, resultCh
+// Get()
+// все самое важное в создании, буферизированный канал, одна горутина
+
 type Future[T any] struct {
 	ctx      context.Context
 	resultCh chan T

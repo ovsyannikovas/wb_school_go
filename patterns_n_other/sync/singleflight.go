@@ -4,6 +4,9 @@ import (
 	"sync"
 )
 
+// Подсказка:
+// call 3 поля, sf 2 поля, Do() проверяем наличие, иначе создаем, вызываем, подтирвем
+
 type call struct {
 	val  interface{}
 	err  error

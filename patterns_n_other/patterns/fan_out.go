@@ -2,6 +2,9 @@ package main
 
 import "context"
 
+// Подсказка:
+// outputs, result, одна горутина на все проходы
+
 func FanOut[T any](ctx context.Context, in <-chan T, numOut int) []<-chan T {
 	if numOut <= 0 {
 		return []<-chan T{}

@@ -1,5 +1,8 @@
 package main
 
+// Подсказка:
+// Then(), resultCh, пишем в канал в new, в then уже обрабатываем
+
 type result[T any] struct {
 	val T
 	err error

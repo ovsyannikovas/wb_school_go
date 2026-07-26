@@ -5,6 +5,9 @@ import (
 	"sync/atomic"
 )
 
+// Подсказка:
+// 3 поля, одно атомик!, Add ==0, закрываем селектом, Done, Wait
+
 type WaitGroup struct {
 	counter atomic.Int64
 	done    chan struct{}

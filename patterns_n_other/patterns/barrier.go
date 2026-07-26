@@ -5,6 +5,14 @@ import (
 	"sync"
 )
 
+// Подсказка:
+// type Barrier interface {
+//	Await() error
+//	Reset()
+//}
+// 6 значений в структуре, 3 каунтера
+// резет дублирует часть await
+
 type Worker interface {
 	Work()
 }

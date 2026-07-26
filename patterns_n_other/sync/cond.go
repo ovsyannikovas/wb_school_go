@@ -4,6 +4,9 @@ import (
 	"sync"
 )
 
+// Подсказка:
+// 3 поля, waiters, Wait, Signal, Broadcast
+
 type Cond struct {
 	L       sync.Locker
 	waiters []chan struct{}

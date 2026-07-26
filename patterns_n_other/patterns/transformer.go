@@ -3,19 +3,34 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 )
 
-func Transformer[T any, R any](ctx context.Context, in <-chan T, fn func(T) R) <-chan R {
+// Подсказка:
+// как fanin, но применяем transform
+
+func Transformer[T any, R any](
+	ctx context.Context, input <-chan T, transform func(T) R, workers int,
+) <-chan R {
 	out := make(chan R)
-	go func() {
-		defer close(out)
-		for v := range in {
-			select {
-			case out <- fn(v):
-			case <-ctx.Done():
-				return
+	var wg sync.WaitGroup
+	wg.Add(workers)
+
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+			for v := range input {
+				select {
+				case out <- transform(v):
+				case <-ctx.Done():
+					return
+				}
 			}
-		}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(out)
 	}()
 	return out
 }
@@ -26,7 +41,7 @@ func main() {
 
 	out := Transformer(ctx, in, func(v int) string {
 		return fmt.Sprintf("value=%d", v)
-	})
+	}, 3)
 
 	go func() {
 		for i := 1; i <= 5; i++ {

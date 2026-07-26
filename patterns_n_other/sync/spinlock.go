@@ -5,6 +5,9 @@ import (
 	"sync/atomic"
 )
 
+// Подсказка:
+// 1 поле, CAS, Lock(), Unlock()
+
 type SpinLock struct {
 	locked atomic.Bool
 }
