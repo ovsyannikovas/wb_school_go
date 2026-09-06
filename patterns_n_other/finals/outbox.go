@@ -2,145 +2,94 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"errors"
 	"sync"
-	"time"
 )
 
-// OutboxEvent — структура события
-type OutboxEvent struct {
-	ID          string
-	AggregateID string
-	EventType   string
-	Payload     []byte
-	Status      string // "PENDING", "SENT", "FAILED"
-	Attempts    int
+// ErrNoEvents возвращается, когда в очереди нет событий для публикации
+var ErrNoEvents = errors.New("в outbox нет событий")
+
+// Order представляет бизнес-сущность заказа
+type Order struct {
+	ID     int
+	UserID int
 }
 
-// InMemoryOutbox — хранилище событий в памяти
-type InMemoryOutbox struct {
-	mu     sync.Mutex
-	events []OutboxEvent
-	cond   *sync.Cond // для уведомления диспетчера о новых событиях
+// Event представляет событие, ожидающее публикации
+type Event struct {
+	ID      int
+	Topic   string
+	OrderID int
 }
 
-func NewInMemoryOutbox() *InMemoryOutbox {
-	o := &InMemoryOutbox{}
-	o.cond = sync.NewCond(&o.mu)
-	return o
+// Publisher определяет контракт для публикации событий во внешний брокер
+type Publisher interface {
+	Publish(ctx context.Context, event Event) error
 }
 
-// AddEvent — атомарное добавление события (имитация транзакции)
-func (o *InMemoryOutbox) AddEvent(event OutboxEvent) {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	event.Status = "PENDING"
-	o.events = append(o.events, event)
-	o.cond.Signal() // пробуждаем диспетчер
+// Store — in-memory хранилище с поддержкой Transactional Outbox
+type Store struct {
+	mu      sync.Mutex
+	relayMu sync.Mutex
+
+	nextOrderID int
+	nextEventID int
+
+	orders map[int]Order
+	outbox []Event
 }
 
-// DispatchLoop — фоновый процесс, отправляет события
-func (o *InMemoryOutbox) DispatchLoop(ctx context.Context, sender func(OutboxEvent) error) {
-	ticker := time.NewTicker(200 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("DispatchLoop stopped")
-			return
-		case <-ticker.C:
-			o.processBatch(sender)
-		}
+// NewStore создаёт и возвращает новое хранилище
+func NewStore() *Store {
+	return &Store{
+		orders: make(map[int]Order),
 	}
 }
 
-// processBatch — обрабатывает одну партию (до 100 событий)
-func (o *InMemoryOutbox) processBatch(sender func(OutboxEvent) error) {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	// Находим все PENDING события (ограничим 100)
-	var toProcess []int
-	for i, ev := range o.events {
-		if ev.Status == "PENDING" && len(toProcess) < 100 {
-			toProcess = append(toProcess, i)
-		}
-	}
-	if len(toProcess) == 0 {
-		return
-	}
-
-	var sentIndices []int
-	for _, idx := range toProcess {
-		ev := &o.events[idx]
-		err := sender(*ev)
-		if err != nil {
-			// Ретри с экспоненциальной задержкой (имитируем через attempts)
-			ev.Attempts++
-			if ev.Attempts >= 5 {
-				ev.Status = "FAILED"
-			}
-			// В реальности здесь можно было бы вычислить available_at, но у нас нет времени, поэтому просто оставляем PENDING
-		} else {
-			ev.Status = "SENT"
-			sentIndices = append(sentIndices, idx)
-		}
-	}
-	// Можно также удалить SENT события, чтобы не занимали память, но для простоты оставим
-}
-
-// Пример бизнес-операции: создание пользователя
-type UserService struct {
-	outbox *InMemoryOutbox
-	mu     sync.Mutex
-	users  []string // имитация БД
-}
-
-func (s *UserService) CreateUser(email string) {
+// CreateOrder атомарно создаёт заказ и добавляет событие в outbox
+func (s *Store) CreateOrder(userID int) Order {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// 1. Сохраняем пользователя (в память)
-	s.users = append(s.users, email)
-
-	// 2. Генерируем событие
-	event := OutboxEvent{
-		ID:          fmt.Sprintf("evt-%d", time.Now().UnixNano()),
-		AggregateID: email, // упрощённо
-		EventType:   "UserCreated",
-		Payload:     []byte(`{"email":"` + email + `"}`),
+	s.nextOrderID++
+	order := Order{
+		ID:     s.nextOrderID,
+		UserID: userID,
 	}
-	// 3. Добавляем в outbox (атомарно с шагом 1 и 2, т.к. мы в одной критической секции)
-	s.outbox.AddEvent(event)
+	s.orders[order.ID] = order
+
+	s.nextEventID++
+	event := Event{
+		ID:      s.nextEventID,
+		Topic:   "orders.created",
+		OrderID: order.ID,
+	}
+	s.outbox = append(s.outbox, event)
+
+	return order
 }
 
-func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+// PublishNext публикует самое старое событие из outbox и удаляет его при успехе
+func (s *Store) PublishNext(ctx context.Context, publisher Publisher) error {
+	s.relayMu.Lock()
+	defer s.relayMu.Unlock()
 
-	outbox := NewInMemoryOutbox()
+	s.mu.Lock()
+	if len(s.outbox) == 0 {
+		s.mu.Unlock()
+		return ErrNoEvents
+	}
 
-	// Запускаем диспетчер
-	go outbox.DispatchLoop(ctx, func(ev OutboxEvent) error {
-		log.Printf("[SENDER] sending event ID=%s type=%s payload=%s",
-			ev.ID, ev.EventType, string(ev.Payload))
-		// Имитация успеха (можно иногда возвращать ошибку для теста ретраев)
-		return nil
-	})
+	event := s.outbox[0]
+	s.mu.Unlock()
 
-	// Создаём сервис пользователей
-	userSvc := &UserService{outbox: outbox}
+	if err := publisher.Publish(ctx, event); err != nil {
+		return err
+	}
 
-	// Создаём пользователя
-	userSvc.CreateUser("alice@example.com")
-	log.Println("User created")
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	// Даём время на отправку
-	time.Sleep(2 * time.Second)
-
-	// Завершаем
-	cancel()
-	time.Sleep(200 * time.Millisecond)
+	s.outbox = s.outbox[1:]
+	return nil
 }
