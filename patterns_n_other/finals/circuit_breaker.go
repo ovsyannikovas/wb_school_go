@@ -17,16 +17,30 @@ const (
 	HalfOpen
 )
 
+func (s CircuitBreakerState) String() string {
+	switch s {
+	case Closed:
+		return "CLOSED"
+	case Open:
+		return "OPEN"
+	case HalfOpen:
+		return "HALF-OPEN"
+	default:
+		return "UNKNOWN"
+	}
+}
+
 // CircuitBreaker
 type CircuitBreaker struct {
-	state         CircuitBreakerState
-	maxFailures   int
-	resetTimeout  time.Duration
-	failureCount  int
-	lastFailure   time.Time
-	mutex         sync.RWMutex
-	halfOpenTimer *time.Timer
+	state        CircuitBreakerState
+	maxFailures  int
+	resetTimeout time.Duration
+	failureCount int
+	lastFailure  time.Time
+	mutex        sync.Mutex
 }
+
+var ErrCircuitOpen = errors.New("circuit breaker is open")
 
 // NewCircuitBreaker — создаём новый Circuit Breaker
 func NewCircuitBreaker(maxFailures int, resetTimeout time.Duration) *CircuitBreaker {
@@ -39,107 +53,87 @@ func NewCircuitBreaker(maxFailures int, resetTimeout time.Duration) *CircuitBrea
 
 // Call — вызывает функцию с контролем состояния Circuit Breaker
 func (cb *CircuitBreaker) Call(fn func() error) error {
-	for {
-		cb.mutex.Lock()
-
-		switch cb.state {
-		case Open:
-			// Проверяем, прошло ли достаточно времени
-			if time.Since(cb.lastFailure) >= cb.resetTimeout {
-				cb.state = HalfOpen
-				cb.mutex.Unlock()
-			} else {
-				// Circuit ещё открыт — ждём
-				wait := cb.resetTimeout - time.Since(cb.lastFailure)
-				cb.mutex.Unlock()
-
-				time.Sleep(wait)
-				continue
-			}
-
-		case Closed:
+	cb.mutex.Lock()
+	// Если breaker открыт — проверяем, не пора ли попробовать half-open
+	if cb.state == Open {
+		if time.Since(cb.lastFailure) >= cb.resetTimeout {
+			cb.state = HalfOpen
+		} else {
 			cb.mutex.Unlock()
-
-		case HalfOpen:
-			// В HalfOpen разрешаем один пробный запрос.
-			cb.mutex.Unlock()
+			return ErrCircuitOpen
 		}
+	}
+	cb.mutex.Unlock()
 
-		// Выполняем запрос
-		err := fn()
+	// Сам вызов делаем БЕЗ удержания мьютекса, чтобы не блокировать
+	// чтение состояния на время сетевого запроса
+	err := fn()
 
-		cb.mutex.Lock()
-		defer cb.mutex.Unlock()
+	cb.mutex.Lock()
+	defer cb.mutex.Unlock()
 
-		if err == nil {
-			// Успешный запрос:
-			// в HalfOpen возвращаемся в Closed.
-			cb.failureCount = 0
-			cb.state = Closed
-
-			return nil
-		}
-
-		// Ошибка запроса
+	if err != nil {
 		cb.failureCount++
 		cb.lastFailure = time.Now()
 
 		if cb.state == HalfOpen {
-			// Пробный запрос в HalfOpen снова завершился ошибкой.
-			// Снова открываем circuit.
+			// Пробный запрос в half-open не удался — снова открываем
 			cb.state = Open
-			return err
-		}
-
-		if cb.failureCount >= cb.maxFailures {
+			cb.failureCount = 0
+		} else if cb.failureCount >= cb.maxFailures {
 			cb.state = Open
 		}
-
 		return err
 	}
+
+	// Успех
+	if cb.state == HalfOpen {
+		cb.state = Closed
+	}
+	cb.failureCount = 0
+	return nil
 }
 
-// APIRequest — эмуляция вызова API
-func APIRequest(id int) error {
-	// 60% вероятность ошибки
-	if rand.Intn(100) < 60 {
-		return errors.New("API request failed")
-	}
+func (cb *CircuitBreaker) State() CircuitBreakerState {
+	cb.mutex.Lock()
+	defer cb.mutex.Unlock()
+	return cb.state
+}
 
+// APIRequest — эмуляция вызова нестабильного API (60% ошибок)
+func APIRequest(id int) error {
+	time.Sleep(50 * time.Millisecond) // имитация сетевой задержки
+	if rand.Intn(100) < 60 {
+		return fmt.Errorf("API error for request %d", id)
+	}
 	return nil
 }
 
 func client(id int, wg *sync.WaitGroup) {
 	defer wg.Done()
-
 	cb := NewCircuitBreaker(3, 5*time.Second)
 
 	for i := 0; i < 10; i++ {
-		err := cb.Call(func() error {
-			return APIRequest(i)
-		})
+		reqID := id*100 + i // уникальный ID запроса для наглядности в логах
+		for {
+			err := cb.Call(func() error {
+				return APIRequest(reqID)
+			})
 
-		if err != nil {
-			if err.Error() == "circuit breaker is open" {
-				fmt.Printf(
-					"Client %d: circuit breaker open for ID %d\n",
-					id,
-					i,
-				)
-			} else {
-				fmt.Printf(
-					"Client %d: request to ID %d failed: %v\n",
-					id,
-					i,
-					err,
-				)
+			if err == nil {
+				fmt.Printf("[Client %d] request ID=%d -> SUCCESS (state=%s)\n", id, reqID, cb.State())
+				break
 			}
-		} else {
-			fmt.Printf(
-				"Client %d: request to ID %d succeeded\n",
-				id,
-				i,
-			)
+
+			if errors.Is(err, ErrCircuitOpen) {
+				fmt.Printf("[Client %d] request ID=%d -> CIRCUIT OPEN, waiting for half-open...\n", id, reqID)
+				time.Sleep(500 * time.Millisecond)
+				continue // ждём и повторяем этот же запрос
+			}
+
+			// обычная ошибка API
+			fmt.Printf("[Client %d] request ID=%d -> FAILURE: %v (state=%s)\n", id, reqID, err, cb.State())
+			break
 		}
 
 		time.Sleep(300 * time.Millisecond)
@@ -148,15 +142,11 @@ func client(id int, wg *sync.WaitGroup) {
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-
 	var wg sync.WaitGroup
-
 	for i := 0; i < 4; i++ {
 		wg.Add(1)
 		go client(i, &wg)
 	}
-
 	wg.Wait()
-
 	fmt.Println("All clients finished.")
 }
