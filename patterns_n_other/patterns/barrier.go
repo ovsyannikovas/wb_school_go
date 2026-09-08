@@ -27,7 +27,7 @@ type Barrier interface {
 // и барьер сбрасывается (становится готовым к следующему использованию)
 type CyclicBarrier struct {
 	mu       sync.Mutex
-	cond     *sync.Cond
+	cond     *sync.Cond // !
 	parties  int
 	count    int
 	gen      int // поколение успешного сбора
@@ -38,6 +38,11 @@ func NewCyclicBarrier(parties int) *CyclicBarrier {
 	b := &CyclicBarrier{parties: parties}
 	b.cond = sync.NewCond(&b.mu)
 	return b
+}
+
+func (b *CyclicBarrier) wakeAll() {
+	b.count = 0
+	b.cond.Broadcast()
 }
 
 // Await блокирует горутину до тех пор, пока все parties не вызовут Await
@@ -52,13 +57,12 @@ func (b *CyclicBarrier) Await() error {
 
 	b.count++
 	if b.count == b.parties {
-		b.count = 0
 		b.gen++
-		b.cond.Broadcast()
+		b.wakeAll()
 		return nil
 	}
 
-	for b.gen == myGen && b.resetGen == myResetGen {
+	for b.gen == myGen && b.resetGen == myResetGen { // пока!
 		b.cond.Wait()
 	}
 
@@ -74,9 +78,8 @@ func (b *CyclicBarrier) Reset() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	b.count = 0
 	b.resetGen++
-	b.cond.Broadcast()
+	b.wakeAll()
 }
 
 // usage

@@ -7,11 +7,11 @@ import (
 )
 
 type RateLimiter struct {
-	leakyBucketCh chan struct{}
-	closeCh       chan struct{}
-	closeDoneCh   chan struct{}
+	leakyBucketCh chan struct{} // главный лимит
+	closeCh       chan struct{} // сигнал горутине: начни останавливаться
+	closeDoneCh   chan struct{} // подтверждение от горутины: я реально остановилась
 	mu            sync.Mutex
-	isClosed      bool
+	isClosed      bool // можно ли вообще начинать закрытие?
 }
 
 func NewLeakyBucketLimiter(limit int, period time.Duration) *RateLimiter {
